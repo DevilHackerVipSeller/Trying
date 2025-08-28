@@ -1,9 +1,8 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>𝐓𝐇𝐄 𝐒𝐏𝐘 𝐏𝐑𝐄𝐃𝐈𝐂𝐓𝐎𝐑</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap');
@@ -30,7 +29,7 @@
     }
     canvas {
       display: block;
-      opacity: 0.5; /* Added from the second page to match the Starfield style */
+      opacity: 0.7;
     }
     .container {
       min-height: 100dvh;
@@ -106,6 +105,65 @@
       font-size: 14px;
       margin-top: 10px;
     }
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .modal-content {
+      background: rgba(0, 0, 0, 0.9);
+      border: 2px solid #0ff;
+      box-shadow: 0 0 20px #0ff, 0 0 40px #0ff;
+      padding: 1.5rem;
+      border-radius: 12px;
+      max-width: 80%;
+      width: 300px;
+      text-align: center;
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+    }
+    .modal-overlay.active .modal-content {
+      transform: scale(1);
+    }
+    .modal-content h3 {
+      font-size: 24px;
+      text-shadow: 0 0 10px #0ff;
+      margin-bottom: 1rem;
+    }
+    .modal-content p {
+      font-size: 12px;
+      color: #0ff;
+      margin-bottom: 1.2rem;
+    }
+    .modal-content button {
+      padding: 8px 16px;
+      font-size: 12px;
+    }
+    .modal-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .attempts-warning {
+      color: orange;
+      font-size: 12px;
+      margin-top: 5px;
+      display: none;
+    }
     @media (max-width: 500px) {
       h1 {
         font-size: 24px;
@@ -113,53 +171,212 @@
       .small-title {
         font-size: 14px;
       }
+      .modal-content {
+        width: 80%;
+        padding: 1rem;
+      }
+      .modal-content h3 {
+        font-size: 20px;
+      }
+      .modal-content p {
+        font-size: 11px;
+      }
+      .modal-content button {
+        padding: 7px 14px;
+        font-size: 11px;
+      }
     }
   </style>
-</head>
-<body>
-<canvas id="starfieldCanvas" class="starfield-bg"></canvas>
-
-<div class="container">
-  <div class="small-title" id="typingTitle"></div>
-  <div class="login-box">
+ </head>
+ <body>
+  <canvas id="starfieldCanvas" class="starfield-bg"></canvas>
+  <div class="container">
+   <div class="small-title" id="typingTitle"></div>
+   <div class="login-box">
     <h1>LOGIN</h1>
-    <input type="text" id="accessKey" placeholder="ENTER ACCESS KEY" />
+    <input type="text" id="accessKey" placeholder="ENTER ACCESS KEY" onkeypress="handleKeyPress(event)">
     <button onclick="handleLogin()">LOGIN</button>
     <button class="secondary" onclick="getKey()">GET KEY</button>
     <div class="loading" id="loading" style="display:none;">VERIFYING...</div>
     <div class="error" id="error"></div>
+    <div class="attempts-warning" id="attemptsWarning">
+     Too many attempts. Try again in <span id="countdown">30</span> seconds.
+    </div>
+   </div>
   </div>
-</div>
-
-<!-- Firebase Script -->
+  <div class="modal-overlay" id="modal">
+   <div class="modal-content">
+    <h3 id="modalTitle">Title</h3>
+    <p id="modalMessage">Message</p>
+    <div class="modal-buttons">
+     <button id="modalConfirmBtn">OK</button>
+     <button class="secondary" id="modalCloseBtn" style="display:none;">Close</button>
+    </div>
+   </div>
+  </div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
   import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
 
   const firebaseConfig = {
-      apiKey: "AIzaSyDmQDemn4U_DS-X0natkfk7JHWcOzxupGo",
-      authDomain: "maalsrworld.firebaseapp.com",
-      projectId: "maalsrworld",
-      storageBucket: "maalsrworld.firebasestorage.app",
-      messagingSenderId: "1054235092352",
-      appId: "1:1054235092352:web:2e0cabd4b54c1853ac0d65",
-      measurementId: "G-54BLS5SHF6"
-    };
-
+    apiKey: "AIzaSyDmQDemn4U_DS-X0natkfk7JHWcOzxupGo",
+    authDomain: "maalsrworld.firebaseapp.com",
+    projectId: "maalsrworld",
+    storageBucket: "maalsrworld.firebasestorage.app",
+    messagingSenderId: "1054235092352",
+    appId: "1:1054235092352:web:2e0cabd4b54c1853ac0d65",
+    measurementId: "G-54BLS5SHF6"
+  };
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
+  const auth = getAuth(app);
+
+  // Anonymous sign-in to access Firebase
+  signInAnonymously(auth).catch((error) => {
+    console.error("Firebase anonymous auth failed:", error);
+  });
+
+  function showModal(title, message) {
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+    modalCloseBtn.style.display = 'none'; // Hide close button for simplicity
+
+    modal.classList.add('active');
+
+    modalConfirmBtn.onclick = function () {
+      modal.classList.remove('active');
+    };
+  }
+
+  let loginAttempts = parseInt(localStorage.getItem('loginAttempts') || '0');
+  let lastAttemptTime = parseInt(localStorage.getItem('lastAttemptTime') || '0');
+  let isLoggingIn = false;
+  const maxAttempts = 5;
+  const lockoutTime = 30000; // 30 seconds
+
+  function getDeviceIdFromCookie() {
+    const cookies = document.cookie.split("; ");
+    for (let cookie of cookies) {
+      const [name, value] = cookie.split("=");
+      if (name === "device_id") return value;
+    }
+    return null;
+  }
 
   function getDeviceId() {
-    let id = localStorage.getItem("device_id");
+    let id = localStorage.getItem("device_id") || getDeviceIdFromCookie();
     if (!id) {
       id = crypto.randomUUID();
       localStorage.setItem("device_id", id);
+      document.cookie = `device_id=${id}; max-age=31536000; path=/; SameSite=Strict`;
     }
     return id;
   }
 
+  function handleKeyPress(event) {
+    if (event.key === 'Enter') {
+      handleLogin();
+    }
+  }
+
+  function checkIfLockedOut() {
+    const now = Date.now();
+    if (loginAttempts >= maxAttempts && (now - lastAttemptTime) < lockoutTime) {
+      const remainingTime = Math.ceil((lockoutTime - (now - lastAttemptTime)) / 1000);
+      document.getElementById('attemptsWarning').style.display = 'block';
+      document.getElementById('countdown').textContent = remainingTime;
+
+      const countdownInterval = setInterval(() => {
+        const newRemaining = parseInt(document.getElementById('countdown').textContent) - 1;
+        document.getElementById('countdown').textContent = newRemaining;
+
+        if (newRemaining <= 0) {
+          clearInterval(countdownInterval);
+          document.getElementById('attemptsWarning').style.display = 'none';
+          loginAttempts = 0;
+          localStorage.setItem('loginAttempts', '0');
+        }
+      }, 1000);
+
+      return true;
+    }
+
+    if (loginAttempts >= maxAttempts && (now - lastAttemptTime) >= lockoutTime) {
+      loginAttempts = 0;
+      localStorage.setItem('loginAttempts', '0');
+    }
+
+    return false;
+  }
+
+  async function tryAutoLogin() {
+    const storedKey = localStorage.getItem("access_key");
+    const deviceId = getDeviceId();
+    const errorDiv = document.getElementById("error");
+    const loadingDiv = document.getElementById("loading");
+
+    if (storedKey) {
+      loadingDiv.style.display = "block";
+      try {
+        const snap = await get(ref(db, `accessKeys/${storedKey}`));
+        loadingDiv.style.display = "none";
+
+        if (!snap.exists()) {
+          localStorage.removeItem("access_key");
+          errorDiv.innerText = "STORED ACCESS KEY NOT FOUND.";
+          return;
+        }
+
+        const data = snap.val();
+        const now = Date.now();
+
+        if (data.expiry && now > data.expiry) {
+          localStorage.removeItem("access_key");
+          errorDiv.innerText = "STORED ACCESS KEY EXPIRED.";
+          showModal('Access Expired', 'Your stored access key has expired. Please get a new one.');
+          return;
+        }
+
+        // Auto-reassign key to current device if mismatch
+        if (data.deviceId && data.deviceId !== deviceId) {
+          await update(ref(db, `accessKeys/${storedKey}`), {
+            deviceId: deviceId,
+            lastLogin: now,
+            reassignmentLog: data.reassignmentLog ? [...data.reassignmentLog, { oldDeviceId: data.deviceId, newDeviceId: deviceId, timestamp: now }] : [{ oldDeviceId: data.deviceId, newDeviceId: deviceId, timestamp: now }]
+          });
+        }
+
+        localStorage.setItem("access_key", storedKey);
+        showModal('Welcome Back', 'Auto-login successful! Redirecting...');
+        setTimeout(() => {
+          window.location.href = "https://devilhackervipseller.github.io/LSR-pvt-World/";
+        }, 1500);
+      } catch (err) {
+        loadingDiv.style.display = "none";
+        localStorage.removeItem("access_key");
+        errorDiv.innerText = "ERROR DURING AUTO-LOGIN. TRY AGAIN.";
+        console.error(err);
+      }
+    }
+  }
+
   window.handleLogin = async function () {
+    if (isLoggingIn) return;
+    isLoggingIn = true;
+
+    if (checkIfLockedOut()) {
+      isLoggingIn = false;
+      return;
+    }
+
     const key = document.getElementById("accessKey").value.trim();
     const errorDiv = document.getElementById("error");
     const loadingDiv = document.getElementById("loading");
@@ -171,6 +388,7 @@
     if (!key) {
       loadingDiv.style.display = "none";
       errorDiv.innerText = "PLEASE ENTER ACCESS KEY.";
+      isLoggingIn = false;
       return;
     }
 
@@ -179,7 +397,17 @@
       loadingDiv.style.display = "none";
 
       if (!snap.exists()) {
+        loginAttempts++;
+        localStorage.setItem('loginAttempts', loginAttempts.toString());
+        localStorage.setItem('lastAttemptTime', Date.now().toString());
+
         errorDiv.innerText = "ACCESS KEY NOT FOUND.";
+
+        if (loginAttempts >= maxAttempts) {
+          checkIfLockedOut();
+        }
+
+        isLoggingIn = false;
         return;
       }
 
@@ -188,105 +416,55 @@
 
       if (data.expiry && now > data.expiry) {
         errorDiv.innerText = "ACCESS KEY EXPIRED.";
+        showModal('Key Expired', 'This access key has expired. Please get a new one via Telegram.');
+        isLoggingIn = false;
         return;
       }
 
+      // Auto-reassign key to current device if mismatch
       if (data.deviceId && data.deviceId !== deviceId) {
-        errorDiv.innerText = "THIS KEY IS ALREADY USED ON ANOTHER DEVICE.";
-        return;
-      }
-
-      if (!data.deviceId) {
         await update(ref(db, `accessKeys/${key}`), {
-          deviceId: deviceId
+          deviceId: deviceId,
+          lastLogin: now,
+          reassignmentLog: data.reassignmentLog ? [...data.reassignmentLog, { oldDeviceId: data.deviceId, newDeviceId: deviceId, timestamp: now }] : [{ oldDeviceId: data.deviceId, newDeviceId: deviceId, timestamp: now }]
+        });
+      } else if (!data.deviceId) {
+        await update(ref(db, `accessKeys/${key}`), {
+          deviceId: deviceId,
+          lastLogin: now
+        });
+      } else {
+        await update(ref(db, `accessKeys/${key}`), {
+          lastLogin: now
         });
       }
 
-      window.location.href = "https://devilhackervipseller.github.io/Devilhackerindex/";
+      loginAttempts = 0;
+      localStorage.setItem('loginAttempts', '0');
+      localStorage.setItem("access_key", key);
+
+      showModal('Success', 'Login successful! Redirecting...');
+      setTimeout(() => {
+        window.location.href = "https://devilhackervipseller.github.io/LSR-pvt-World/";
+      }, 1500);
     } catch (err) {
       loadingDiv.style.display = "none";
       errorDiv.innerText = "ERROR DURING LOGIN. TRY AGAIN.";
       console.error(err);
+    } finally {
+      isLoggingIn = false;
     }
   };
 
   window.getKey = function () {
-    const message = encodeURIComponent("HELLO DEVIL HACKER BROTHER , I NEED AN ACCESS KEY.");
+    const message = encodeURIComponent("HELLO DEVIL HACKER BROTHER, I NEED A NEW ACCESS KEY.");
     window.open(`https://t.me/Devil_Hacker_Vip?text=${message}`, '_blank');
   };
+
+  window.onload = function () {
+    tryAutoLogin();
+    checkIfLockedOut();
+  };
 </script>
-
-<!-- Starfield Animation -->
-<script>
-  const canvas = document.getElementById("starfieldCanvas");
-  const ctx = canvas.getContext("2d");
-  canvas.height = window.innerHeight;
-  canvas.width = window.innerWidth;
-
-  const stars = [];
-  const starCount = 400;
-
-  class Star {
-    constructor() {
-      this.angle = Math.random() * Math.PI * 2;
-      this.radius = Math.random() * Math.min(canvas.width, canvas.height) * 0.7;
-      this.speed = Math.random() * 0.02 + 0.01;
-      this.size = Math.random() * 4 + 1;
-      this.color = Math.random() > 0.8 ? "#ffffff" : "#00f7ff";
-    }
-    update() {
-      this.angle += this.speed;
-      this.x = canvas.width / 2 + Math.cos(this.angle) * this.radius;
-      this.y = canvas.height / 2 + Math.sin(this.angle) * this.radius;
-    }
-    draw() {
-      ctx.fillStyle = this.color;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function initStars() {
-    for (let i = 0; i < starCount; i++) {
-      stars.push(new Star());
-    }
-  }
-
-  function animateStars() {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    stars.forEach(star => {
-      star.update();
-      star.draw();
-    });
-    requestAnimationFrame(animateStars);
-  }
-
-  initStars();
-  animateStars();
-
-  window.addEventListener('resize', () => {
-    canvas.height = window.innerHeight;
-    canvas.width = window.innerWidth;
-    stars.forEach(star => {
-      star.radius = Math.min(star.radius, Math.min(canvas.width, canvas.height) * 0.7);
-    });
-  });
-</script>
-
-<!-- Typing Animation -->
-<script>
-  const text = "𝐓𝐇𝐄 𝐒𝐏𝐘 𝐏𝐑𝐄𝐃𝐈𝐂𝐓𝐎𝐑";
-  let index = 0;
-  function type() {
-    if (index < text.length) {
-      document.getElementById("typingTitle").innerHTML += text.charAt(index);
-      index++;
-      setTimeout(type, 100);
-    }
-  }
-  type();
-</script>
-</body>
+ </body>
 </html>
